@@ -8,6 +8,9 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -26,6 +29,9 @@ public class HelloWorldReceiver {
     private static Logger logger = LoggerFactory.getLogger(HelloWorldReceiver.class);
 
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     /**
      * 当设置channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false); 失败后放入死信队列
      *
@@ -37,33 +43,65 @@ public class HelloWorldReceiver {
     @RabbitHandler
     public void orderUpdatePointsProcess(Channel channel, Message message) throws Exception {
         long startTime = System.currentTimeMillis();
-        Thread.sleep(10000);
-        System.out.println("=========开始处理消息，message content: {}" + message);
+        boolean flag = false;
+        int count = 0; //重试次数
+        String correlationData = "";
         try {
+
             String body = new String(message.getBody(), "UTF-8");
-            System.out.println("消费者得到的消息是：" + body);
-            boolean flag = false;
+//            long retryCount = getRetryCount(message.getMessageProperties());
+//            System.out.println(" 当前消息重试次数：" + retryCount + "=========开始处理消息，message content: {}" + message);
+
+            //获取消息唯一ID号
+            correlationData =
+                    (String) message.getMessageProperties().getHeaders().get("spring_returned_message_correlation");
+            System.out.println("correlationData：" + correlationData);
+
+            //可以通过correlationID进行存储redis进行消息幂等，判断该消息是否执行过
+            //redis消息幂等
+
+            //消息执行结果是否成功
             if (!StringUtils.isEmpty(body)) {
                 flag = false;
             }
 //            1 当channel.basicNack 第三个参数设为true时，消息签收失败会继续进入消息队列等待消费
 //            2 当channel.basicNack 第三个参数设为false时，消息签收失败,此时消息进入死信队列，完成消费
-            if (flag) {
-                System.out.println("处理成功！"+message);
-                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-            } else {
-                System.out.println("处理失败！"+message);
-                Thread.sleep(2000);
-//                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, true);//失败后继续放入消息队列等待消费
-                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);//失败后继续放入死信队列
 
-            }
         } catch (Exception e) {
             System.out.println("===== 处理消息 RabbitMQ 失败，message content: {}" + message);
-            channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, true);
+            flag = false;
             e.printStackTrace();
+        } finally {
+            if (flag) {
+                System.out.println("处理成功！" + message);
+                channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+            } else {
+                System.out.println("处理失败！" + message);
+//                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, true);//失败后继续放入消息队列等待消费
+
+                //rabbitmq headers头可存储消息体，重试次数
+                Map<String, Object> headers = message.getMessageProperties().getHeaders();
+                if (headers.containsKey("failed_count_for_send_to_exchange")) {
+                    count = (int) headers.get("failed_count_for_send_to_exchange");
+                } else {
+                    count = 0;
+                }
+
+                //重试次数大于三次则将消息放入死信队列
+                if (count >= 3) {
+                    channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);//失败后继续放入死信队列
+                } else {
+                    count++;
+                    message.getMessageProperties().getHeaders().put("failed_count_for_send_to_exchange", count);
+                    channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+                    // 重试次数不超过3次,则将消息发送到重试队列等待重新被消费
+                    rabbitTemplate.convertAndSend(MQConstant.HELLO_WORLD_MESSAGE_EXCHANGE, MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY, message, new CorrelationData(correlationData));
+                    logger.info("消费失败，重试消息队列;" + "原始消息：" + new String(message.getBody()) + ";第"
+                            + (count) + "次重试");
+                }
+            }
+            System.out.println("=========结束处理操作,执行耗时：{}ms，message content: {}" + message + (System.currentTimeMillis() - startTime));
         }
-        System.out.println("=========结束处理操作,执行耗时：{}ms，message content: {}"+ message +(System.currentTimeMillis() - startTime));
     }
 
     /**
@@ -79,7 +117,7 @@ public class HelloWorldReceiver {
     }
 
     /**
-     * 获取消息被重试的次数
+     * 获取消息被重试的次数,目前没有找到可以获取消费次数办法。下面的方法网上查询所得。目前没有证实是否可用
      */
     public long getRetryCount(MessageProperties messageProperties) {
         Long retryCount = 0L;
@@ -92,4 +130,5 @@ public class HelloWorldReceiver {
         }
         return retryCount;
     }
+
 }

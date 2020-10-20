@@ -41,7 +41,7 @@ public class DeadProducer {
         //声明死信路由键
         args.put("x-dead-letter-routing-key", MQConstant.HELLO_WORLD_DEL_MESSAGE_ROUTINGKEY);
         //声明队列消息过期时间 30分钟,30分钟不进行操作即可被丢到死信队列
-        args.put("x-message-ttl", 5000);//这次用于测试5秒后会被放入死信队列
+        args.put("x-message-ttl", 50000);//这次用于测试5秒后会被放入死信队列
         return QueueBuilder.durable(MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY).withArguments(args).build();
     }
     /**
