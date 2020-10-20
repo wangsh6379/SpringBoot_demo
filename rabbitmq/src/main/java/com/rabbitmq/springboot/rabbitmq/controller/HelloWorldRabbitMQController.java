@@ -13,9 +13,9 @@ public class HelloWorldRabbitMQController {
     private RabbitTemplate rabbitTemplate;
 
     @RequestMapping("rabbitMq")
-    public void rabbitMq(){
+    public void rabbitMq() {
         String message = "这是一条helloWorld消息，发送给MQ";
-        rabbitTemplate.convertAndSend(MQConstant.HELLO_WORLD_MESSAGE_EXCHANGE,MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY,message);
+        rabbitTemplate.convertAndSend(MQConstant.HELLO_WORLD_MESSAGE_EXCHANGE, MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY, message);
 
     }
 }

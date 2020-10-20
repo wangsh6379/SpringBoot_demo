@@ -13,7 +13,7 @@ public class MQConstant {
     public static final String HELLO_WORLD_MESSAGE_ROUTINGKEY = "hello_world_message_routingkey";
 
     //死信交换机
-    public static final String HELLO_WORLD_DEL_MESSAGE_EXCHANGE = "hello_world_del_message_exchange";
-    public static final String HELLO_WORLD_DEL_MESSAGE_ROUTINGKEY = "hello_world_del_message_routingkey";
+    public static final  String HELLO_WORLD_DEL_MESSAGE_EXCHANGE = "hello_del_message_exchange";
+    public static final String HELLO_WORLD_DEL_MESSAGE_ROUTINGKEY = "hello_del_message_routingkey";
 
 }

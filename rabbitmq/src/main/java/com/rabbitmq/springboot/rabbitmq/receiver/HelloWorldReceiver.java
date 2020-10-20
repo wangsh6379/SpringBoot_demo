@@ -2,13 +2,18 @@ package com.rabbitmq.springboot.rabbitmq.receiver;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.springboot.rabbitmq.config.MQConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 消费者实际操作消息文件
@@ -18,12 +23,21 @@ import java.io.IOException;
  */
 @Component
 public class HelloWorldReceiver {
+    private static Logger logger = LoggerFactory.getLogger(HelloWorldReceiver.class);
 
 
+    /**
+     * 当设置channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false); 失败后放入死信队列
+     *
+     * @param channel
+     * @param message
+     * @throws Exception
+     */
     @RabbitListener(queues = MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY, containerFactory = "singleListenerContainer")
     @RabbitHandler
-    public void orderUpdatePointsProcess(Channel channel, Message message) throws IOException {
+    public void orderUpdatePointsProcess(Channel channel, Message message) throws Exception {
         long startTime = System.currentTimeMillis();
+        Thread.sleep(10000);
         System.out.println("=========开始处理消息，message content: {}" + message);
         try {
             String body = new String(message.getBody(), "UTF-8");
@@ -52,7 +66,6 @@ public class HelloWorldReceiver {
         System.out.println("=========结束处理操作,执行耗时：{}ms，message content: {}"+ message +(System.currentTimeMillis() - startTime));
     }
 
-
     /**
      * 死信队列.
      *
@@ -60,7 +73,23 @@ public class HelloWorldReceiver {
      */
     @RabbitListener(queues = MQConstant.HELLO_WORLD_DEL_MESSAGE_ROUTINGKEY, containerFactory = "singleListenerContainer")
     public void dealSubscribe(Message message, Channel channel) throws IOException {
-        System.out.println("消息进入死信队列:" + new String(message.getBody(), "UTF-8"));
+        logger.info("消息进入死信队列:" + new String(message.getBody(), "UTF-8"));
+
         channel.basicAck(message.getMessageProperties().getDeliveryTag(), true);
+    }
+
+    /**
+     * 获取消息被重试的次数
+     */
+    public long getRetryCount(MessageProperties messageProperties) {
+        Long retryCount = 0L;
+        if (null != messageProperties) {
+            List<Map<String, ?>> deaths = messageProperties.getXDeathHeader();
+            if (deaths != null && deaths.size() > 0) {
+                Map<String, Object> death = (Map<String, Object>) deaths.get(0);
+                retryCount = (Long) death.get("count");
+            }
+        }
+        return retryCount;
     }
 }
