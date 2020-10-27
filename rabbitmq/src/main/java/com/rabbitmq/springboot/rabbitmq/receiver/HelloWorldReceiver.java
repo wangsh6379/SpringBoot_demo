@@ -50,12 +50,10 @@ public class HelloWorldReceiver {
 
             String body = new String(message.getBody(), "UTF-8");
 //            long retryCount = getRetryCount(message.getMessageProperties());
-//            System.out.println(" 当前消息重试次数：" + retryCount + "=========开始处理消息，message content: {}" + message);
-
             //获取消息唯一ID号
             correlationData =
                     (String) message.getMessageProperties().getHeaders().get("spring_returned_message_correlation");
-            System.out.println("correlationData：" + correlationData);
+            logger.info("correlationData：" + correlationData);
 
             //可以通过correlationID进行存储redis进行消息幂等，判断该消息是否执行过
             //redis消息幂等
@@ -68,15 +66,14 @@ public class HelloWorldReceiver {
 //            2 当channel.basicNack 第三个参数设为false时，消息签收失败,此时消息进入死信队列，完成消费
 
         } catch (Exception e) {
-            System.out.println("===== 处理消息 RabbitMQ 失败，message content: {}" + message);
-            flag = false;
+            logger.info("===== 处理消息 RabbitMQ 失败，message content: {}" + message);
             e.printStackTrace();
         } finally {
             if (flag) {
-                System.out.println("处理成功！" + message);
+                logger.info("处理成功！" + message);
                 channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
             } else {
-                System.out.println("处理失败！" + message);
+                logger.info("处理失败！" + message);
 //                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, true);//失败后继续放入消息队列等待消费
 
                 //rabbitmq headers头可存储消息体，重试次数
@@ -100,7 +97,7 @@ public class HelloWorldReceiver {
                             + (count) + "次重试");
                 }
             }
-            System.out.println("=========结束处理操作,执行耗时：{}ms，message content: {}" + message + (System.currentTimeMillis() - startTime));
+            logger.info("=========结束处理操作,执行耗时：{}ms，message content: {}" + message + (System.currentTimeMillis() - startTime));
         }
     }
 
