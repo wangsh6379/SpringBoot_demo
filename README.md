@@ -1,3 +1,2 @@
-# spring-boot-demo
-Spring Boot &amp; Spring Cloud &amp; Spring Security Demo Case（Spring学习示例实战项目）
+SpringBoot-demo
 不定期更新...
