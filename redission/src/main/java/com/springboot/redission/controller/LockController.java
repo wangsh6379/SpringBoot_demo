@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * redisson锁测试
+ */
 @RestController
 @RequestMapping("lock")
 public class LockController {
@@ -15,15 +18,16 @@ public class LockController {
 
     @Autowired
     private DistributedLocker distributedLocker;
+
     @RequestMapping("joinGroup")
-    public String joinGroup(){
+    public String joinGroup() {
         String lockName = "lockDemo";
         RLock lock = distributedLocker.lock(lockName);
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             distributedLocker.unlock(lockName);
         }
         return "ok";
@@ -31,12 +35,13 @@ public class LockController {
 
     /**
      * 设置加锁后2秒后解锁
+     *
      * @return
      */
     @RequestMapping("joinTimeoutGroup")
-    public String joinTimeoutGroup(){
+    public String joinTimeoutGroup() {
         String lockName = "lockDemo";
-        RLock lock = distributedLocker.lock(lockName,3);
+        RLock lock = distributedLocker.lock(lockName, 3);
         try {
             Thread.sleep(5000);
         } catch (Exception e) {
