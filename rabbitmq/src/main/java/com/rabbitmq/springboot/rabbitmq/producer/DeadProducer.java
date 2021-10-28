@@ -23,8 +23,8 @@ public class DeadProducer {
 
     // 声明业务Exchange
     @Bean("businessExchange")
-    public FanoutExchange businessExchange(){
-        return new FanoutExchange(MQConstant.HELLO_WORLD_MESSAGE_EXCHANGE);
+    public DirectExchange businessExchange(){
+        return new DirectExchange(MQConstant.HELLO_WORLD_MESSAGE_EXCHANGE);
     }
 
     // 声明死信Exchange
@@ -63,8 +63,8 @@ public class DeadProducer {
      */
     @Bean
     public Binding businessBindingA(@Qualifier("businessQueueA") Queue queue,
-                                    @Qualifier("businessExchange") FanoutExchange exchange){
-        return BindingBuilder.bind(queue).to(exchange);
+                                    @Qualifier("businessExchange") DirectExchange exchange){
+        return BindingBuilder.bind(queue).to(exchange).with(MQConstant.HELLO_WORLD_MESSAGE_ROUTINGKEY);
     }
 
     // 声明死信队列A绑定关系
